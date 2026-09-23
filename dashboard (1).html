@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gateway Dashboard — Project Schedules</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F7F9; --surface: #FFFFFF; --border: #E3E6EB; --text: #1B2432; --text-dim: #667085; --text-faint: #98A2B3;
+    --accent: #1E3A5F; --accent-soft: #E9EEF5; --gray: #98A2B3; --gray-soft: #F1F2F5; --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+  .auth-gate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-dim); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 60px; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; margin-bottom: 4px; }
+  h1 { font-size: 26px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .user-menu { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-dim); }
+  .role-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; background: var(--accent-soft); color: var(--accent); padding: 3px 8px; border-radius: 999px; }
+  .btn { font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+  .btn:hover { background: var(--gray-soft); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .project-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px; text-decoration: none; color: var(--text); display: block;
+  }
+  .project-card:hover { border-color: var(--accent); }
+  .project-card.disabled { opacity: 0.55; cursor: default; pointer-events: none; }
+  .project-name { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .project-meta { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+  .project-status { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; display: inline-block; }
+  .status-live { background: #E8F7EE; color: #16A34A; }
+  .status-soon { background: var(--gray-soft); color: var(--text-faint); }
+</style>
+</head>
+<body>
+
+<div id="authGate" class="auth-gate">Checking sign-in…</div>
+
+<div class="wrap" id="appWrap" style="display:none;">
+  <div class="topbar">
+    <div>
+      <div class="eyebrow">Gateway Investment Group</div>
+      <h1>Project Dashboard</h1>
+    </div>
+    <div class="user-menu">
+      <span id="userEmailLabel"></span>
+      <span class="role-badge" id="userRoleBadge"></span>
+      <button class="btn" id="btnLogout">Log Out</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <a href="index.html" class="project-card">
+      <div class="project-name">43 Munn</div>
+      <div class="project-meta">Residential Construction</div>
+      <span class="project-status status-live">Live</span>
+    </a>
+    <a href="https://gatewaygroup-ca.github.io/McGivney_Schedule/" class="project-card">
+      <div class="project-name">McGivney Community Homes</div>
+      <div class="project-meta">Myrtle · Emerald · Fairleigh</div>
+      <span class="project-status status-live">Live</span>
+    </a>
+    <a href="https://gatewaygroup-ca.github.io/Kiwanis_Schedule/" class="project-card">
+      <div class="project-name">Kiwanis Community Homes</div>
+      <div class="project-meta">138 Paling · 97 Garside · 53 Fraser</div>
+      <span class="project-status status-live">Live</span>
+    </a>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  auth.onAuthStateChanged((user) => {
+    if (!user) { window.location.href = "login.html"; return; }
+    db.ref("roles/" + user.uid).once("value").then((snap) => {
+      const role = snap.val();
+      const gate = document.getElementById("authGate");
+      if (!role) {
+        gate.innerHTML = `<div style="text-align:center;max-width:380px;padding:24px;line-height:1.6;">Your account (${escapeHtmlSafe(user.email)}) doesn't have access yet.<br>Contact your Gateway admin to be assigned a role.<br><br><button class="btn" id="btnGateLogout">Log Out</button></div>`;
+        document.getElementById("btnGateLogout").onclick = () => auth.signOut().then(() => window.location.href = "login.html");
+        return;
+      }
+      document.getElementById("userEmailLabel").textContent = user.email;
+      document.getElementById("userRoleBadge").textContent = role;
+      document.getElementById("btnLogout").onclick = () => auth.signOut().then(() => window.location.href = "login.html");
+      gate.style.display = "none";
+      document.getElementById("appWrap").style.display = "block";
+    });
+  });
+  function escapeHtmlSafe(s) {
+    return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+</script>
+</body>
+</html>
